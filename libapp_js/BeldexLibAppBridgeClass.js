@@ -204,7 +204,9 @@ class BeldexLibAppBridgeClass extends MyMoneroCoreBridgeEssentialsClass
 			self._cb_handlers__SendFundsFormSubmission = null // reset so we can enter process again
 		};
 		const args = 
-		{
+		{	
+			registration_string: fn_args.registration_string,
+			isRegisterStr: fn_args.isRegister,
 			fromWallet_didFailToInitialize: fn_args.fromWallet_didFailToInitialize,
 			fromWallet_didFailToBoot: fn_args.fromWallet_didFailToBoot,
 			fromWallet_needsImport: fn_args.fromWallet_needsImport,
@@ -249,6 +251,7 @@ class BeldexLibAppBridgeClass extends MyMoneroCoreBridgeEssentialsClass
 			args.resolvedPaymentID = fn_args.resolvedPaymentID;
 		}
 		const args_str = JSON.stringify(args, null, '')
+		// console.log('semd-funds args_str', args_str);
 		const ret_string = this.Module.send_funds(args_str);
 		const ret = JSON.parse(ret_string);
 		if (typeof ret.err_msg !== 'undefined' && ret.err_msg) { // this is actually an exception
