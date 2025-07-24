@@ -41,7 +41,7 @@ set(
     src/index.cpp
     #
     src/emscr_SendFunds_bridge.hpp
-    src/emscr_SendFunds_bridge.cpp    
+    src/emscr_SendFunds_bridge.cpp
     #
     ${BELDEX_CORE_CPP_SRC}/beldex_address_utils.hpp
     ${BELDEX_CORE_CPP_SRC}/beldex_address_utils.cpp
@@ -66,7 +66,6 @@ set(
     ${BELDEX_CORE_CPP_SRC}/tools__ret_vals.hpp
     ${BELDEX_CORE_CPP_SRC}/tools__ret_vals.cpp
     ${BELDEX_CORE_CPP_SRC}/register_mn_data.hpp
-
     #
     ${BELDEX_LIBAPP_CPP_SRC}/SendFunds/Controllers/SendFundsFormSubmissionController.hpp
     ${BELDEX_LIBAPP_CPP_SRC}/SendFunds/Controllers/SendFundsFormSubmissionController.cpp

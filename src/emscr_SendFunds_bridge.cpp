@@ -181,7 +181,6 @@ void emscr_SendFunds_bridge::register_new_wallet(const boost::property_tree::ptr
 												 vector<string> &dest_addrs,
 												 vector<string> &dest_amounts)
 {
-	// std::cout << "The isRegister is true" << std::endl;
 
 	std::string registration_string = json_root.get<std::string>("registration_string");
 	std::vector<std::string> local_args;
@@ -299,7 +298,8 @@ void emscr_SendFunds_bridge::register_new_wallet(const boost::property_tree::ptr
 void emscr_SendFunds_bridge::send_funds(const string &args_string)
 {
 	boost::property_tree::ptree json_root;
-	if (!parsed_json_root(args_string, json_root)) {
+	if (!parsed_json_root(args_string, json_root))
+	{
 		// (it will already have thrown an exception)
 		send_app_handler__error_msg(error_ret_json_from_message("Invalid JSON"));
 		return;
@@ -319,21 +319,15 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 	else
 	{
 		const auto &destinations = json_root.get_child("destinations");
-		// vector<string> dest_addrs, dest_amounts;
 		dest_addrs.reserve(destinations.size());
 		dest_amounts.reserve(destinations.size());
 
-        for (const auto& dest : destinations) {
+		for (const auto &dest : destinations)
+		{
 			dest_addrs.emplace_back(dest.second.get<string>("to_address"));
 			dest_amounts.emplace_back(dest.second.get<string>("send_amount"));
 		}
 	}
-
-	// std::cout << " ---Data.master_node_key : " << mn_data.master_node_key << std::endl;
-	// std::cout << " ---Data.signature : " << mn_data.signature << std::endl;
-	// std::cout << " ---Data.Contributor size : " << mn_data.contributor_args.addresses.size() << std::endl;
-	// std::cout << " ---Data.Contributor porsions size : " << mn_data.contributor_args.portions.size() << std::endl;
-	// std::cout << " ---Data from mn_data: " << mn_data.time_stamp << std::endl;
 
 	Parameters parameters{
 		std::move(mn_data),
@@ -370,60 +364,53 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 		json_root.get_optional<string>("resolvedPaymentID"),
 		json_root.get<bool>("resolvedPaymentID_fieldIsVisible"),
 		//
-		[] ( // preSuccess_nonTerminal_validationMessageUpdate_fn
-			ProcessStep step
-		) -> void {
+		[]( // preSuccess_nonTerminal_validationMessageUpdate_fn
+			ProcessStep step) -> void
+		{
 			send_app_handler__status_update(step);
 		},
-		[] ( // failure_fn
+		[]( // failure_fn
 			SendFunds::PreSuccessTerminalCode code,
 			boost::optional<string> msg,
 			boost::optional<CreateTransactionErrorCode> createTx_errCode,
 			boost::optional<uint64_t> spendable_balance,
-			boost::optional<uint64_t> required_balance
-		) -> void {
+			boost::optional<uint64_t> required_balance) -> void
+		{
 			send_app_handler__error_code(code, msg, createTx_errCode, spendable_balance, required_balance);
 		},
-		[] () -> void { // preSuccess_passedValidation_willBeginSending
+		[]() -> void { // preSuccess_passedValidation_willBeginSending
 			EM_ASM_(
 				{
 					Module.fromCpp__SendFundsFormSubmission__willBeginSending({}); // Module must implement this!
-				}
-			);
+				});
 		},
 		//
-		[] () -> void { // canceled_fn
+		[]() -> void { // canceled_fn
 			EM_ASM_(
 				{
 					Module.fromCpp__SendFundsFormSubmission__canceled({}); // Module must implement this!
-				}
-			);
+				});
 			THROW_WALLET_EXCEPTION_IF(controller_ptr == NULL, error::wallet_internal_error, "expected non-NULL controller_ptr");
 			delete controller_ptr; // having finished
 			controller_ptr = NULL;
 		},
-		[] (SendFunds::Success_RetVals retVals) -> void // success_fn
+		[](SendFunds::Success_RetVals retVals) -> void // success_fn
 		{
 			send_app_handler__success(retVals);
-		}
-	};
+		}};
 	controller_ptr = new FormSubmissionController{parameters}; // heap alloc
-	if (!controller_ptr) { // exception will be thrown if oom but JIC, since null ptrs are somehow legal in WASM
+	if (!controller_ptr)
+	{ // exception will be thrown if oom but JIC, since null ptrs are somehow legal in WASM
 		send_app_handler__error_msg("Out of memory (heap vals container)");
 		return;
 	}
-	(*controller_ptr).set__authenticate_fn(
-		[] () -> void
-		{ // authenticate_fn - this is not guaranteed to be called but it will be if requireAuthentication is true
+	(*controller_ptr).set__authenticate_fn([]() -> void { // authenticate_fn - this is not guaranteed to be called but it will be if requireAuthentication is true
 		EM_ASM_(
 			{
 				Module.fromCpp__SendFundsFormSubmission__authenticate(); // Module must implement this!
-				}
-			);
-		}
-	);
-	(*controller_ptr).set__get_unspent_outs_fn([] (LightwalletAPI_Req_GetUnspentOuts req_params) -> void
-	{ // get_unspent_outs
+			});
+	});
+	(*controller_ptr).set__get_unspent_outs_fn([](LightwalletAPI_Req_GetUnspentOuts req_params) -> void { // get_unspent_outs
 		boost::property_tree::ptree req_params_root;
 		req_params_root.put("address", req_params.address);
 		req_params_root.put("view_key", req_params.view_key);
@@ -432,21 +419,19 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 		req_params_root.put("use_dust", req_params.use_dust);
 		req_params_root.put("mixin", req_params.mixin);
 		stringstream req_params_ss;
-		boost::property_tree::write_json(req_params_ss, req_params_root, false/*pretty*/);
+		boost::property_tree::write_json(req_params_ss, req_params_root, false /*pretty*/);
 		EM_ASM_(
 			{
 				const JS__req_params_string = Module.UTF8ToString($0);
 				const JS__req_params = JSON.parse(JS__req_params_string);
 				Module.fromCpp__SendFundsFormSubmission__get_unspent_outs(JS__req_params); // Module must implement this!
 			},
-			req_params_ss.str().c_str()
-		);
+			req_params_ss.str().c_str());
 	});
-	(*controller_ptr).set__get_random_outs_fn([] (LightwalletAPI_Req_GetRandomOuts req_params) -> void
-	{ // get_random_outs
+	(*controller_ptr).set__get_random_outs_fn([](LightwalletAPI_Req_GetRandomOuts req_params) -> void { // get_random_outs
 		boost::property_tree::ptree req_params_root;
 		boost::property_tree::ptree amounts_ptree;
-		BOOST_FOREACH(const string &amount_string, req_params.amounts)
+		BOOST_FOREACH (const string &amount_string, req_params.amounts)
 		{
 			property_tree::ptree amount_child;
 			amount_child.put("", amount_string);
@@ -455,18 +440,16 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 		req_params_root.add_child("amounts", amounts_ptree);
 		req_params_root.put("count", req_params.count);
 		stringstream req_params_ss;
-		boost::property_tree::write_json(req_params_ss, req_params_root, false/*pretty*/);
+		boost::property_tree::write_json(req_params_ss, req_params_root, false /*pretty*/);
 		EM_ASM_(
 			{
 				const JS__req_params_string = Module.UTF8ToString($0);
 				const JS__req_params = JSON.parse(JS__req_params_string);
 				Module.fromCpp__SendFundsFormSubmission__get_random_outs(JS__req_params); // Module must implement this!
 			},
-			req_params_ss.str().c_str()
-		);
+			req_params_ss.str().c_str());
 	});
-	(*controller_ptr).set__submit_raw_tx_fn([] (LightwalletAPI_Req_SubmitRawTx req_params) -> void
-	{ // submit_raw_tx
+	(*controller_ptr).set__submit_raw_tx_fn([](LightwalletAPI_Req_SubmitRawTx req_params) -> void { // submit_raw_tx
 		boost::property_tree::ptree req_params_root;
 		boost::property_tree::ptree amounts_ptree;
 		req_params_root.put("address", std::move(req_params.address));
@@ -474,7 +457,7 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 		req_params_root.put("tx", std::move(req_params.tx));
 		req_params_root.put("fee", std::move(req_params.priority));
 		stringstream req_params_ss;
-		boost::property_tree::write_json(req_params_ss, req_params_root, false/*pretty*/);
+		boost::property_tree::write_json(req_params_ss, req_params_root, false /*pretty*/);
 		auto req_params_string = req_params_ss.str();
 		EM_ASM_(
 			{
@@ -482,8 +465,7 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 				const JS__req_params = JSON.parse(JS__req_params_string);
 				Module.fromCpp__SendFundsFormSubmission__submit_raw_tx(JS__req_params); // Module must implement this!
 			},
-			req_params_ss.str().c_str()
-		);
+			req_params_ss.str().c_str());
 	});
 	(*controller_ptr).handle();
 }
