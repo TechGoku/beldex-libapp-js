@@ -65,6 +65,7 @@ set(
     ${BELDEX_CORE_CPP_SRC}/serial_bridge_utils.cpp
     ${BELDEX_CORE_CPP_SRC}/tools__ret_vals.hpp
     ${BELDEX_CORE_CPP_SRC}/tools__ret_vals.cpp
+    ${BELDEX_CORE_CPP_SRC}/register_mn_data.hpp
     #
     ${BELDEX_LIBAPP_CPP_SRC}/SendFunds/Controllers/SendFundsFormSubmissionController.hpp
     ${BELDEX_LIBAPP_CPP_SRC}/SendFunds/Controllers/SendFundsFormSubmissionController.cpp
@@ -100,6 +101,8 @@ set(
     ${BELDEX_SRC}/crypto/jh.c
     ${BELDEX_SRC}/crypto/skein.c
     ${BELDEX_SRC}/cryptonote_core/cryptonote_tx_utils.cpp
+    ${BELDEX_SRC}/cryptonote_core/master_node_list.cpp
+    ${BELDEX_SRC}/cryptonote_core/master_node_rules.cpp
     ${BELDEX_SRC}/common/base58.cpp
     ${BELDEX_SRC}/common/threadpool.cpp
     ${BELDEX_SRC}/common/aligned.c

@@ -35,7 +35,7 @@
 //
 #include <string>
 #include <boost/optional.hpp>
-#include "cryptonote_config.h" 
+#include "cryptonote_config.h"
 #include "SendFundsFormSubmissionController.hpp"
 //
 namespace emscr_SendFunds_bridge
@@ -50,6 +50,10 @@ namespace emscr_SendFunds_bridge
 	// To use these functions, the appropriate emscripten-side JS fn handlers must exist, which must be hooked up to perform the e.g. networking or transport requests they are specced to perform, then upon the async completion of those requests, call the appropate "cb_I+"-named function to allow the internal evaluation of the routine entrypoint to complete.
 	//
 	// Public interface:
+	void register_new_wallet(const boost::property_tree::ptree &json_root,
+							 master_node_data &mn_data,
+							 vector<string> &dest_addrs,
+							 vector<string> &dest_amounts);
 	void send_funds(const string &args_string);
 	void send_cb__authentication(const string &args_string);
 	void send_cb_I__got_unspent_outs(const string &args_string);
