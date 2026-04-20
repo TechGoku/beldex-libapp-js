@@ -1,20 +1,20 @@
 {
-  "name": "mymonero-libapp-js",
+  "name": "beldex-libapp-js",
   "version": "1.0.0",
-  "description": "The JS library containing the JS transpilation of the shared library behind the MyMonero apps",
+  "description": "The JS library containing the JS transpilation of the shared library behind the Beldex apps",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mymonero/mymonero-libapp-js.git"
+    "url": "git+https://github.com/Beldex-Coin/beldex-libapp-js.git"
   },
   "scripts": {
-    "build": "docker run --rm -it -v $(pwd):/app -w /app devinsa/mymonerolibappjs ./bin/archive-emcpp.sh",
+    "build": "docker run --rm -it -v $(pwd):/app -w /app techgoku/beldex-libapp:0.1 ./bin/archive-emcpp.sh",
     "format": "find . -name '*.js*' | xargs prettier --write --config ./.prettierrc --config-precedence file-override",
     "test": "mocha"
   },
   "keywords": [
-    "monero",
-    "mymonero",
+    "beldex",
+    "bdx",
     "javascript",
     "js",
     "lightweight",
@@ -25,12 +25,12 @@
     "utility",
     "tool"
   ],
-  "author": "MyMonero",
-  "license": "See LICENSE.TXT. Copyright (c) 2014-2019, MyMonero.com. All rights reserved.",
+  "author": "Beldex",
+  "license": "See LICENSE.TXT. Copyright (c) 2018-2025, Beldex. All rights reserved.",
   "bugs": {
-    "url": "https://github.com/mymonero/mymonero-libapp-js/issues"
+    "url": "https://github.com/Beldex-Coin/beldex-libapp-js/issues"
   },
-  "homepage": "https://github.com/mymonero/mymonero-libapp-js#readme",
+  "homepage": "https://github.com/Beldex-Coin/beldex-libapp-js#readme",
   "dependencies": {},
   "devDependencies": {
     "mocha": "5.2.0"
@@ -40,9 +40,9 @@
     "verbose": true,
     "coveragePathIgnorePatterns": [
       "node_modules",
-      "monero_utils/MyMoneroLibAppCpp_WASM.js",
-      "monero_utils/MyMoneroLibAppCpp_ASMJS.js",
-      "monero_utils/MyMoneroLibAppCpp_ASMJS.asm.js"
+      "beldex_utils/BeldexLibAppCpp_WASM.js",
+      "beldex_utils/BeldexLibAppCpp_ASMJS.js",
+      "beldex_utils/BeldexLibAppCpp_ASMJS.asm.js"
     ]
   }
 }

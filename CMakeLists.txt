@@ -21,6 +21,7 @@ set(BELDEX_SRC "${BELDEX_CORE_CPP}/contrib/beldex-core-custom")
 include_directories(${BELDEX_SRC})
 include_directories("${BELDEX_SRC}/external")
 include_directories("${BELDEX_SRC}/external/loki-mq")
+include_directories("${BELDEX_SRC}/external/oxen-encoding")
 include_directories("${BELDEX_SRC}/epee/include")
 include_directories("${BELDEX_SRC}/common")
 include_directories("${BELDEX_SRC}/vtlogger")
@@ -122,6 +123,7 @@ set(
     ${BELDEX_SRC}/ringct/rctCryptoOps.c
     ${BELDEX_SRC}/ringct/rctSigs.cpp
     ${BELDEX_SRC}/ringct/bulletproofs.cc
+    ${BELDEX_SRC}/ringct/bulletproofs_plus.cc
     ${BELDEX_SRC}/ringct/multiexp.cc
     ${BELDEX_SRC}/mnemonics/electrum-words.cpp
     ${BELDEX_SRC}/vtlogger/logger.cpp
