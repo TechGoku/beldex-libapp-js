@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+echo "🔁  git submodule update --init --recursive";
+git submodule update --init --recursive
+echo "🔁  git submodule foreach --recursive git fetch";
+git submodule foreach --recursive git fetch
+echo "🔁  git submodule foreach --recursive git checkout bulletproof_plus_integration";
+git submodule foreach --recursive git checkout bulletproof_plus_integration
+echo "🔁  git submodule foreach --recursive git pull --ff-only origin bulletproof_plus_integration";
+git submodule foreach --recursive git pull --ff-only origin bulletproof_plus_integration
