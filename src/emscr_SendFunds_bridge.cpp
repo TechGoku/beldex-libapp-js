@@ -38,6 +38,7 @@
 #include <emscripten.h>
 #include <unordered_map>
 #include <memory>
+#include <regex>
 //
 #include "epee/string_tools.h"
 #include "wallet_errors.h"
@@ -155,6 +156,12 @@ void send_app_handler__success(const Success_RetVals &success_retVals)
 	}
 
 	root.put("target_address", target_address_str);
+	// HF21: present only when this send deployed a new asset. The id is derived
+	// from the descriptor rather than chosen, so this is where the caller learns
+	// what its token is actually called on chain.
+	if (success_retVals.token_id) {
+		root.put("token_id", *(success_retVals.token_id));
+	}
 	root.put("final_total_wo_fee", std::move(RetVals_Transforms::str_from(success_retVals.final_total_wo_fee)));
 	root.put("isXMRAddressIntegrated", std::move(RetVals_Transforms::str_from(success_retVals.isXMRAddressIntegrated)));
 	if (success_retVals.integratedAddressPIDForDisplay) {
@@ -295,6 +302,136 @@ void emscr_SendFunds_bridge::register_new_wallet(const boost::property_tree::ptr
 	dest_amounts.emplace_back(amount_payable_by_operator_str);
 }
 
+// Report a failure that happened before the controller was allocated. The
+// ordinary error handler frees controller_ptr and throws if it is null, so it
+// cannot be used from the argument-parsing that runs ahead of construction.
+static void _send_app_handler__preflight_error(const string &err_msg)
+{
+	EM_ASM_(
+		{
+			const JS__req_params_string = Module.UTF8ToString($0);
+			const JS__req_params = JSON.parse(JS__req_params_string);
+			Module.fromCpp__SendFundsFormSubmission__error(JS__req_params); // Module must implement this!
+		},
+		error_ret_json_from_message(err_msg).c_str()
+	);
+}
+
+// Mirrors the rules simplewallet enforces for `deploy_new_token`, so a token
+// deployed from the light wallet is accepted by the same daemon that accepts one
+// deployed from the CLI. These are checked here rather than deeper down because
+// this is the layer that still has the user's input as text and can say which
+// field was wrong.
+static bool _validate_token_ticker(const std::string &ticker)
+{
+	static const std::regex token_ticker_regexp{R"([A-Za-z0-9]{1,14})"};
+	return std::regex_match(ticker, token_ticker_regexp);
+}
+static bool _validate_token_full_name(const std::string &full_name)
+{
+	static const std::regex token_full_name_regexp{R"([A-Za-z0-9.,:!?\-() ]{0,400})"};
+	return std::regex_match(full_name, token_full_name_regexp);
+}
+
+bool emscr_SendFunds_bridge::deploy_new_token(const boost::property_tree::ptree &json_root,
+											  boost::optional<token_operation_data> &token_op,
+											  vector<string> &dest_addrs,
+											  vector<string> &dest_amounts)
+{
+	boost::optional<const boost::property_tree::ptree &> optl__descriptor_json
+		= json_root.get_child_optional("token_descriptor");
+	if (optl__descriptor_json == boost::none) {
+		_send_app_handler__preflight_error("Missing token_descriptor for token deployment");
+		return false;
+	}
+	const auto &descriptor_json = *optl__descriptor_json;
+	//
+	// A deployment burns a fixed amount of BDX by protocol rule, which flash
+	// priority would overwrite with its own burn. Reject it rather than build a
+	// transaction the network will not accept -- registration does the same.
+	if ((uint32_t)stoul(json_root.get<string>("priority")) == 5) {
+		_send_app_handler__preflight_error("Token deployment cannot use flash priority");
+		return false;
+	}
+	//
+	token_operation_data data{};
+	auto &tdo = data.tdo;
+	tdo.operation_type = cryptonote::token_descriptor_operation_type::register_token;
+	// The descriptor is what the token id is derived from; the salt is what keeps
+	// two identical descriptors from colliding on the same id.
+	tdo.fields = (uint8_t)(cryptonote::token_field_descriptor | cryptonote::token_field_token_id_salt);
+	tdo.token_id_salt = crypto::rand<uint32_t>();
+	//
+	auto &descriptor = tdo.descriptor;
+	descriptor.ticker = descriptor_json.get<string>("ticker", "");
+	descriptor.full_name = descriptor_json.get<string>("full_name", "");
+	descriptor.meta_info = descriptor_json.get<string>("meta_info", "");
+	if (!_validate_token_ticker(descriptor.ticker)) {
+		_send_app_handler__preflight_error("Token ticker must be 1-14 alphanumeric characters");
+		return false;
+	}
+	if (!_validate_token_full_name(descriptor.full_name)) {
+		_send_app_handler__preflight_error("Token full_name contains unsupported characters");
+		return false;
+	}
+	//
+	uint64_t decimal_point = 0;
+	try {
+		decimal_point = stoull(descriptor_json.get<string>("decimal_point"));
+	} catch (...) {
+		_send_app_handler__preflight_error("Token decimal_point must be a number");
+		return false;
+	}
+	if (decimal_point > 18) {
+		_send_app_handler__preflight_error("Token decimal_point must be <= 18");
+		return false;
+	}
+	descriptor.decimal_point = (uint8_t)decimal_point;
+	//
+	// Supplies arrive human-readable, on the token's own scale, exactly like
+	// send_amount does everywhere else across this bridge. current_supply's
+	// original string is handed on as the destination amount below, so the
+	// supply recorded in the descriptor and the supply actually minted are
+	// parsed from the same text by the same function and cannot drift apart.
+	const string current_supply_string = descriptor_json.get<string>("current_supply", "0");
+	const string total_max_supply_string = descriptor_json.get<string>("total_max_supply", "0");
+	if (!cryptonote::parse_token_amount(descriptor.current_supply, current_supply_string, descriptor.decimal_point)
+		|| !cryptonote::parse_token_amount(descriptor.total_max_supply, total_max_supply_string, descriptor.decimal_point)) {
+		_send_app_handler__preflight_error("Token supply amounts could not be parsed");
+		return false;
+	}
+	if (descriptor.current_supply > descriptor.total_max_supply) {
+		_send_app_handler__preflight_error("Token current_supply cannot exceed total_max_supply");
+		return false;
+	}
+	//
+	// The owner is the key that will be allowed to mint and update this token
+	// later, and consensus checks the ownership proof against it. It is taken
+	// from the sending wallet rather than from the request: a wallet cannot
+	// prove ownership of anyone else's key, so any other value would deploy a
+	// token that this wallet could never mint from again.
+	if (!epee::string_tools::hex_to_pod(json_root.get<string>("pub_spendKey_string"), descriptor.owner)) {
+		_send_app_handler__preflight_error("Could not read the wallet's public spend key");
+		return false;
+	}
+	//
+	data.token_id = cryptonote::get_or_calculate_token_id(tdo);
+	if (data.token_id == crypto::null_tid) {
+		_send_app_handler__preflight_error("Could not derive a token id from the descriptor");
+		return false;
+	}
+	//
+	// A deploy mints its initial supply to its creator: there is no counterparty
+	// to send to, and the wallet must own the outputs to be able to spend the
+	// new token afterwards. create_transaction pads this out to the minimum
+	// zarcanum fan-out the chain requires.
+	dest_addrs.emplace_back(json_root.get<string>("from_address_string"));
+	dest_amounts.emplace_back(current_supply_string);
+	//
+	token_op = std::move(data);
+	return true;
+}
+
 void emscr_SendFunds_bridge::send_funds(const string &args_string)
 {
 	boost::property_tree::ptree json_root;
@@ -310,8 +447,21 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 	vector<string> dest_addrs, dest_amounts;
 	master_node_data mn_data = {};
 
+	// HF21: deploying a new asset is a send whose destinations the caller does
+	// not supply -- they are derived from the descriptor and all point back at
+	// the sending wallet.
+	boost::optional<token_operation_data> token_op = boost::none;
+	const bool isDeployToken = json_root.get<bool>("is_deploy_token", false);
+
 	const bool isRegister = json_root.get<bool>("isRegisterStr");
-	if (isRegister)
+	if (isDeployToken)
+	{
+		if (!deploy_new_token(json_root, token_op, dest_addrs, dest_amounts)) {
+			return; // already reported; no controller was allocated to clean up
+		}
+	}
+
+	else if (isRegister)
 	{
 		register_new_wallet(json_root, mn_data, dest_addrs, dest_amounts);
 	}
@@ -397,7 +547,37 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 		[](SendFunds::Success_RetVals retVals) -> void // success_fn
 		{
 			send_app_handler__success(retVals);
-		}};
+		},
+		//
+		// HF21 private tokens. Both are absent for an ordinary BDX send, which
+		// is what every existing caller sends -- Parameters declares them last
+		// precisely so this list can omit them and have them value-initialise to
+		// none. Setting token_id switches the send to that token: the amounts in
+		// send_amount_strings are then denominated in it, while the fee is still
+		// paid in BDX from the wallet's native outputs.
+		// A deploy names the token it is creating, so that its outputs are tagged
+		// with the new id in the same way an ordinary token send tags its own.
+		token_op != boost::none
+			? boost::optional<string>(epee::string_tools::pod_to_hex(token_op->token_id))
+			: json_root.get_optional<string>("token_id"),
+		// Required whenever token_id is set. The send amounts are human-readable
+		// and a token's scale is its own, not BDX's 9, so the controller refuses
+		// rather than mis-parsing if this is missing.
+		[&]() -> boost::optional<uint8_t> {
+			if (token_op != boost::none) {
+				return token_op->tdo.descriptor.decimal_point;
+			}
+			boost::optional<string> dp = json_root.get_optional<string>("token_decimal_point");
+			if (dp == boost::none || dp->empty()) {
+				return boost::none;
+			}
+			return (uint8_t)stoul(*dp);
+		}(),
+		// HF21: present only for a deploy. Turns the send into a token
+		// descriptor operation: the descriptor goes into tx.extra, the txtype
+		// becomes deploy_new_token, and the protocol's deployment burn is added
+		// on top of the network fee.
+		std::move(token_op)};
 	controller_ptr = new FormSubmissionController{parameters}; // heap alloc
 	if (!controller_ptr)
 	{ // exception will be thrown if oom but JIC, since null ptrs are somehow legal in WASM

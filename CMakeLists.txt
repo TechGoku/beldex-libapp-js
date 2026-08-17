@@ -79,7 +79,9 @@ set(
     ${BELDEX_SRC}/cryptonote_basic/cryptonote_format_utils.h
     ${BELDEX_SRC}/cryptonote_basic/cryptonote_format_utils.cpp
     ${BELDEX_SRC}/cryptonote_basic/cryptonote_basic.cpp
+    ${BELDEX_SRC}/cryptonote_basic/token_descriptor_operation_utils.cpp
     ${BELDEX_SRC}/crypto/crypto.cpp
+    ${BELDEX_SRC}/crypto/token_proofs.cpp
     ${BELDEX_SRC}/crypto/hash.c
     ${BELDEX_SRC}/crypto/cn_heavy_hash_hard_arm.cpp
     ${BELDEX_SRC}/crypto/cn_heavy_hash_hard_intel.cpp
@@ -147,8 +149,6 @@ set (
 -s DEMANGLE_SUPPORT=1 \
 -s ALLOW_MEMORY_GROWTH=1 \
 -s NO_DISABLE_EXCEPTION_CATCHING \
--s NODEJS_CATCH_EXIT=1 \
--s NODEJS_CATCH_REJECTION=0 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=1 \
 -s LLD_REPORT_UNDEFINED \
 -s RESERVED_FUNCTION_POINTERS=5 \
@@ -163,4 +163,45 @@ message(STATUS "EMCC_LINKER_FLAGS__WASM ${EMCC_LINKER_FLAGS__WASM}")
 #
 add_executable(BeldexLibAppCpp_WASM ${SRC_FILES})
 #
-set_target_properties(BeldexLibAppCpp_WASM PROPERTIES COMPILE_FLAGS "-s USE_BOOST_HEADERS=1" LINK_FLAGS "${EMCC_LINKER_FLAGS__WASM}")
+# The -std=c++11 in the linker flags above applies at link time only, so
+# compilation has always used the toolchain default. That was fine for the
+# emscripten this was originally built with, whose clang defaulted to an older
+# standard; a current emsdk defaults to C++17, where std::unary_function and
+# std::binary_function are removed and libc++ no longer defines them. epee's
+# misc_language.h and boost's container_hash both still use them, so the build
+# fails on ~90 errors before reaching any project code.
+#
+# C++17 is required, not merely tolerated: the vendored beldex core uses
+# std::array CTAD and std::has_unique_object_representations_v, so it cannot be
+# built at C++14 or below. The removed function-object bases are restored via
+# libc++'s own escape hatch instead, which keeps the vendored headers untouched.
+# Every flag here is inert on the original toolchain.
+#
+# -s NODEJS_CATCH_EXIT=1 / NODEJS_CATCH_REJECTION=0 were also removed from the
+# linker flags above: a current emsdk rejects both outright when combined with
+# -s MODULARIZE=1, which this module requires.
+set_target_properties(BeldexLibAppCpp_WASM PROPERTIES
+  COMPILE_FLAGS "-s USE_BOOST_HEADERS=1"
+  LINK_FLAGS "${EMCC_LINKER_FLAGS__WASM}")
+
+# Guarded to CXX: the target also compiles C (libsodium, crypto/hash.c), and
+# COMPILE_FLAGS above applies to every language, where -std=c++17 is rejected.
+target_compile_options(BeldexLibAppCpp_WASM PRIVATE
+  $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
+  # See above: restores the function-object bases C++17 removed, which epee and
+  # boost's container_hash still reference.
+  $<$<COMPILE_LANGUAGE:CXX>:-D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION>
+  # asio arrives transitively through the beldex headers and its platform
+  # detection recognises only Windows and POSIX, inferring neither for
+  # emscripten -- it hard-errors "Only Windows and POSIX are supported!" before
+  # compiling anything. Emscripten does provide the pthread API, so saying so is
+  # enough; nothing in this target opens a socket.
+  $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_ASIO_HAS_PTHREADS>
+  # boost::thread makes the same platform check and otherwise fails with "Sorry,
+  # no boost threads are available for this platform". Emscripten ships the
+  # pthread headers even for a single-threaded build, so this only selects the
+  # pthread backend at compile time. Deliberately not -pthread: that would turn
+  # on real WASM threading, which needs SharedArrayBuffer and cross-origin
+  # isolation headers in the browser and would change the module's shape.
+  $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_HAS_PTHREADS>
+  $<$<COMPILE_LANGUAGE:CXX>:-DBOOST_HAS_THREADS>)
