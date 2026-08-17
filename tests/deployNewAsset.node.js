@@ -8,7 +8,9 @@
 // server. The construction that happens after that point is covered by
 // beldex-core-cpp's tests/token_deploy_test.cpp, which builds a real deploy
 // transaction and inspects it.
-const modPath = process.argv[2];
+// Resolved against the working directory rather than this file, so a path typed
+// at the shell means what it looks like.
+const modPath = require("path").resolve(process.cwd(), process.argv[2]);
 require(modPath)().then(function (M) {
   let fails = 0;
   const check = (n, c, e) => { if (c) console.log("  PASS  " + n); else { console.log("  FAIL  " + n + (e ? "  " + e : "")); fails++; } };

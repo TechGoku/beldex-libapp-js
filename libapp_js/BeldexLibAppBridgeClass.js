@@ -250,6 +250,42 @@ class BeldexLibAppBridgeClass extends MyMoneroCoreBridgeEssentialsClass
 		if (typeof fn_args.resolvedPaymentID !== 'undefined' && fn_args.resolvedPaymentID !== null && fn_args.resolvedPaymentID !== "") {
 			args.resolvedPaymentID = fn_args.resolvedPaymentID;
 		}
+		//
+		// ── HF21 private tokens ───────────────────────────────────────────
+		// Send a token instead of BDX. The amounts in destinations are then
+		// denominated in that token, while the fee is still paid in BDX out of
+		// the wallet's native outputs. token_decimal_point is required alongside
+		// token_id: send amounts are human-readable and a token's scale is its
+		// own, not BDX's 9, so the C++ side refuses rather than mis-parsing it.
+		if (typeof fn_args.token_id !== 'undefined' && fn_args.token_id !== null && fn_args.token_id !== "") {
+			args.token_id = fn_args.token_id;
+		}
+		if (typeof fn_args.token_decimal_point !== 'undefined' && fn_args.token_decimal_point !== null && fn_args.token_decimal_point !== "") {
+			args.token_decimal_point = "" + fn_args.token_decimal_point;
+		}
+		// Deploy a new asset. This one supplies no destinations: they are derived
+		// from the descriptor and all point back at the sending wallet, which is
+		// where the initial supply is minted. The token's id is derived from the
+		// descriptor rather than chosen, and comes back on success_fn as
+		// params.token_id -- there is no other way to learn it.
+		if (typeof fn_args.is_deploy_token !== 'undefined' && fn_args.is_deploy_token) {
+			const descriptor = fn_args.token_descriptor;
+			if (typeof descriptor === 'undefined' || descriptor === null) {
+				throw "Expected fn_args.token_descriptor when is_deploy_token is set"
+			}
+			args.is_deploy_token = true;
+			// Everything crosses this bridge as a string, as with priority above.
+			// Supplies are human-readable on the token's own scale, like
+			// send_amount is: "1000" of an 8-decimal token, not 100000000000.
+			args.token_descriptor = {
+				ticker: "" + descriptor.ticker,
+				full_name: "" + (descriptor.full_name || ""),
+				meta_info: "" + (descriptor.meta_info || ""),
+				decimal_point: "" + descriptor.decimal_point,
+				total_max_supply: "" + descriptor.total_max_supply,
+				current_supply: "" + (descriptor.current_supply || "0")
+			};
+		}
 		const args_str = JSON.stringify(args, null, '')
 		// console.log('semd-funds args_str', args_str);
 		const ret_string = this.Module.send_funds(args_str);
