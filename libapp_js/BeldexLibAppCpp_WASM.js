@@ -1045,16 +1045,16 @@ function dbg(text) {
 // === Body ===
 
 var ASM_CONSTS = {
-  387140: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__error(JS__req_params); },  
- 387321: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__success(JS__req_params); },  
- 387504: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__error(JS__req_params); },  
- 387685: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__status_update(JS__req_params); },  
- 387874: () => { Module.fromCpp__SendFundsFormSubmission__willBeginSending({}); },  
- 387941: () => { Module.fromCpp__SendFundsFormSubmission__canceled({}); },  
- 388000: () => { Module.fromCpp__SendFundsFormSubmission__authenticate(); },  
- 388061: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__get_unspent_outs(JS__req_params); },  
- 388253: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__get_random_outs(JS__req_params); },  
- 388444: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__submit_raw_tx(JS__req_params); }
+  386996: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__error(JS__req_params); },  
+ 387177: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__success(JS__req_params); },  
+ 387360: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__error(JS__req_params); },  
+ 387541: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__status_update(JS__req_params); },  
+ 387730: () => { Module.fromCpp__SendFundsFormSubmission__willBeginSending({}); },  
+ 387797: () => { Module.fromCpp__SendFundsFormSubmission__canceled({}); },  
+ 387856: () => { Module.fromCpp__SendFundsFormSubmission__authenticate(); },  
+ 387917: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__get_unspent_outs(JS__req_params); },  
+ 388109: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__get_random_outs(JS__req_params); },  
+ 388300: ($0) => { const JS__req_params_string = Module.UTF8ToString($0); const JS__req_params = JSON.parse(JS__req_params_string); Module.fromCpp__SendFundsFormSubmission__submit_raw_tx(JS__req_params); }
 };
 
 
@@ -7302,7 +7302,7 @@ run();
 
 
 // end include: postamble.js
-// include: /home/z034/lws-con-asst/beldex-libapp-js/src/module-post.js
+// include: /home/z034/lws-con-asst/.testtmp/wb/src/module-post.js
 Module['ready'] = new Promise(function (resolve, reject) {
   delete Module['then']
   Module['onAbort'] = function (what) {
@@ -7312,7 +7312,7 @@ Module['ready'] = new Promise(function (resolve, reject) {
     resolve(Module)
   })
 })
-// end include: /home/z034/lws-con-asst/beldex-libapp-js/src/module-post.js
+// end include: /home/z034/lws-con-asst/.testtmp/wb/src/module-post.js
 
 
   return moduleArg.ready

@@ -81,6 +81,31 @@ class BeldexLibAppBridgeClass extends MyMoneroCoreBridgeEssentialsClass
 			self._cb_handlers__SendFundsFormSubmission["fromCpp__SendFundsFormSubmission__authenticate"]();
 		}
 	}
+	// HF22: what a private-token registration costs and requires, as protocol
+	// constants. Call this before offering registration in a UI: it is how the
+	// app learns that 10,000 BDX will be locked, for how long, and what the
+	// descriptor limits are, instead of discovering all of it from a failed
+	// send. Amounts come back as strings in atomic units -- 10,000 BDX exceeds
+	// what a JS number holds safely, so parse with BigInt if you do arithmetic.
+	//
+	// Returns:
+	//   { collateral_amount, collateral_lock_blocks, min_token_outputs,
+	//     min_fork_version, max_ticker_length, max_full_name_length,
+	//     max_decimal_point }
+	tokenRegistrationInfo()
+	{
+		return JSON.parse(this.Module.token_registration_info());
+	}
+	// Convenience for the common UI question: can this wallet afford to register
+	// a token right now? `unlockedBalance` is atomic units, as a string or
+	// BigInt. Deliberately excludes the network fee, which is not known until
+	// the inputs are chosen -- so treat a true here as necessary, not
+	// sufficient, and let the send report the exact shortfall.
+	canAffordTokenRegistration(unlockedBalance)
+	{
+		const info = this.tokenRegistrationInfo();
+		return BigInt(unlockedBalance) >= BigInt(info.collateral_amount);
+	}
 	__new_cb_args_with_no_task_id(err_msg, res)
 	{
 		const args = {};

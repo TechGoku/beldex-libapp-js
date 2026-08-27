@@ -51,7 +51,7 @@ require(modPath)().then(function (M) {
     resolvedPaymentID_fieldIsVisible: false,
   }, extra || {});
 
-  const good = { ticker: "ZODI", full_name: "Zodiako Test Asset", decimal_point: "8",
+  const good = { ticker: "DEMO", full_name: "Demo Token", decimal_point: "8",
                  total_max_supply: "1000000", current_supply: "1000", meta_info: "" };
 
   const run = (json) => { lastError = null; unspentReq = null; M.send_funds(JSON.stringify(json)); };
@@ -66,7 +66,7 @@ require(modPath)().then(function (M) {
   // Validation. Each of these must come back as an error rather than building
   // a transaction the daemon would reject.
   const bad = [
-    ["ticker with a space", Object.assign({}, good, { ticker: "ZO DI" })],
+    ["ticker with a space", Object.assign({}, good, { ticker: "DE MO" })],
     ["ticker too long", Object.assign({}, good, { ticker: "ABCDEFGHIJKLMNO" })],
     ["empty ticker", Object.assign({}, good, { ticker: "" })],
     ["decimal_point over 18", Object.assign({}, good, { decimal_point: "19" })],
