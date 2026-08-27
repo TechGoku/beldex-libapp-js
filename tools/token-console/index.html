@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Token Console</title>
+<style>
+  :root{
+    --bg:#f7f7f8; --panel:#fff; --ink:#16181d; --muted:#6b7280; --line:#e3e5e9;
+    --accent:#2f6df6; --ok:#0f8a4d; --warn:#a86400; --bad:#c0392b;
+    --code:#f2f3f5;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0f1115; --panel:#171a20; --ink:#e6e8ec; --muted:#9aa1ab; --line:#272b33;
+           --accent:#6d9bff; --ok:#3fbf7f; --warn:#e0a33a; --bad:#ef6b5c; --code:#11141a; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);background:var(--panel);
+         display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:12.5px}
+  main{max-width:1180px;margin:0 auto;padding:20px;display:grid;gap:18px;
+       grid-template-columns:minmax(340px,1fr) minmax(420px,1.25fr)}
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);
+           margin:0 0 12px;font-weight:650}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;
+        background:var(--bg);color:var(--ink);font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+  textarea{resize:vertical;min-height:96px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  button{padding:9px 14px;border:1px solid var(--line);border-radius:7px;background:var(--accent);
+         color:#fff;font-weight:600;font-size:13px;cursor:pointer}
+  button.ghost{background:transparent;color:var(--ink)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  table{width:100%;border-collapse:collapse;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+  td{padding:4px 0;vertical-align:top}
+  td:first-child{color:var(--muted);width:44%;padding-right:10px}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:10px;
+      overflow-x:auto;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;margin:0;
+      max-height:340px;overflow-y:auto}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:650;
+        border:1px solid var(--line)}
+  .pill.ok{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+  .pill.bad{background:color-mix(in srgb,var(--bad) 14%,transparent)}
+  .pill.warn{background:color-mix(in srgb,var(--warn) 14%,transparent)}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .full{grid-column:1/-1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Privacy Token Console</h1>
+  <span class="sub">register a token through the light-wallet client, and watch whether it is actually mined</span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Wallet</h2>
+    <label>Address</label><input id="addr" spellcheck="false">
+    <label>Private view key</label><input id="vk" spellcheck="false">
+    <label>Private spend key</label><input id="sk" spellcheck="false">
+    <label>Public spend key</label><input id="pk" spellcheck="false">
+    <div class="btns">
+      <button class="ghost" id="btnLoad">Load state</button>
+      <button class="ghost" id="btnRemember">Remember</button>
+    </div>
+    <div class="note">Testnet only. Keys stay in this browser and go to the local proxy, nowhere else.</div>
+  </section>
+
+  <section class="card">
+    <h2>Chain &amp; balance</h2>
+    <table id="state"><tr><td>—</td><td>load state to begin</td></tr></table>
+    <div class="note" id="stale"></div>
+  </section>
+
+  <section class="card">
+    <h2>Token descriptor</h2>
+    <div class="row">
+      <div><label>Ticker</label><input id="ticker" value="DEMO"></div>
+      <div><label>Decimals</label><input id="dec" value="12"></div>
+    </div>
+    <label>Full name</label><input id="name" value="Demo Token">
+    <div class="row">
+      <div><label>Total max supply <span class="sub">(display)</span></label><input id="max" value="100000"></div>
+      <div><label>Initial supply <span class="sub">(display)</span></label><input id="cur" value="1000"></div>
+    </div>
+    <label>Meta info</label><input id="meta" value="">
+    <label>…or load a JSON descriptor file</label>
+    <input type="file" id="file" accept=".json,application/json">
+    <div class="note">
+      A CLI <code>token.txt</code> holds <b>atomic</b> supplies; these fields are <b>display</b> units.
+      Loading a file converts it using its own <code>decimal_point</code>.
+    </div>
+    <div class="btns">
+      <button id="btnPreview">Build (no broadcast)</button>
+      <button id="btnSend">Build &amp; broadcast</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Result</h2>
+    <table id="result"><tr><td>—</td><td>nothing built yet</td></tr></table>
+    <div class="btns"><button class="ghost" id="btnWatch" disabled>Watch for confirmation</button></div>
+    <div class="note">Acceptance is not success. A rejected registration still returns
+      <code>200</code> and simply never appears in a block.</div>
+  </section>
+
+  <section class="card full">
+    <h2>Log</h2>
+    <pre id="log">ready</pre>
+  </section>
+</main>
+
+<script src="/wasm/BeldexLibAppCpp_WASM.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const LOG = $("log");
+const log = (m, cls) => {
+  const t = new Date().toTimeString().slice(0,8);
+  LOG.insertAdjacentHTML("beforeend",
+    `\n<span class="${cls||''}">[${t}] ${String(m).replace(/[<&]/g,c=>c==='<'?'&lt;':'&amp;')}</span>`);
+  LOG.scrollTop = LOG.scrollHeight;
+};
+const post = async (ep, body) => {
+  const r = await fetch("/lws/"+ep, {method:"POST",headers:{"Content-Type":"application/json"},
+                                     body:JSON.stringify(body)});
+  const text = await r.text();
+  let json = null; try { json = JSON.parse(text); } catch(_) {}
+  return { code:r.status, json, text };
+};
+const bdx = a => (Number(a)/1e9).toLocaleString(undefined,{maximumFractionDigits:9});
+const rows = (el, pairs) => {
+  el.innerHTML = pairs.map(([k,v,c]) => `<tr><td>${k}</td><td class="${c||''}">${v}</td></tr>`).join("");
+};
+
+// ---- persistence (per-browser convenience only) ---------------------------
+const FIELDS = ["addr","vk","sk","pk"];
+try {
+  const saved = JSON.parse(localStorage.getItem("tokconsole") || "{}");
+  FIELDS.forEach(f => { if (saved[f]) $(f).value = saved[f]; });
+} catch(_) {}
+$("btnRemember").onclick = () => {
+  try {
+    localStorage.setItem("tokconsole",
+      JSON.stringify(Object.fromEntries(FIELDS.map(f => [f, $(f).value.trim()]))));
+    log("wallet fields remembered in this browser");
+  } catch(_) { log("could not write localStorage", "warn"); }
+};
+
+let M = null, lastTx = null, watchTimer = null, baseline = null;
+
+Module().then(m => { M = m; log("wasm module loaded"); }).catch(e => log("wasm load failed: "+e.message,"bad"));
+
+// ---- chain + balance -------------------------------------------------------
+async function loadState() {
+  const address = $("addr").value.trim(), view_key = $("vk").value.trim();
+  if (!address || !view_key) return log("address and view key are required","warn");
+  log("get_address_info…");
+  const info = await post("get_address_info", {address, view_key});
+  if (info.code !== 200 || !info.json) return log("get_address_info failed: "+info.code+" "+info.text.slice(0,200),"bad");
+
+  const outs = await post("get_unspent_outs", {address, view_key, amount:"0",
+    dust_threshold:"2000000000", use_dust:true, mixin:9});
+  const d = info.json, u = outs.json || {};
+  const scanned = Number(d.scanned_height||0), tip = Number(u.blockchain_height||d.blockchain_height||0);
+  const lag = scanned - tip;
+  baseline = { total_sent: d.total_sent, locked: d.locked_funds };
+
+  rows($("state"), [
+    ["fork version", u.fork_version ?? "—", Number(u.fork_version)>=22 ? "ok" : "bad"],
+    ["scanned height", scanned.toLocaleString()],
+    ["reported tip", tip.toLocaleString(), lag>0 ? "warn":"ok"],
+    ["balance", bdx(Number(d.total_received||0)-Number(d.total_sent||0))+" BDX"],
+    ["locked funds", bdx(d.locked_funds||0)+" BDX", Number(d.locked_funds)>0?"ok":""],
+    ["spendable outputs", (u.outputs||[]).length],
+  ]);
+  $("stale").innerHTML = lag > 0
+    ? `<span class="warn">Reported tip is ${lag.toLocaleString()} blocks behind the scanner.</span>
+       The collateral unlock height is derived from the tip, so a large gap builds registrations
+       consensus rejects on arrival.`
+    : `<span class="ok">Tip is level with the scanner.</span>`;
+  log(`state: fork=${u.fork_version} tip=${tip} scanned=${scanned} lag=${lag}`, lag>0?"warn":"ok");
+}
+$("btnLoad").onclick = () => loadState().catch(e => log("load failed: "+e.message,"bad"));
+
+// ---- descriptor file -------------------------------------------------------
+$("file").onchange = ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const j = JSON.parse(rd.result);
+      const dp = Number(j.decimal_point ?? 0);
+      // token.txt carries ATOMIC supplies; these inputs are display units.
+      const toDisplay = v => {
+        if (v === undefined || v === null) return "";
+        const s = BigInt(v).toString().padStart(dp+1,"0");
+        const w = s.slice(0, s.length-dp), fr = dp ? s.slice(s.length-dp).replace(/0+$/,"") : "";
+        return fr ? `${w}.${fr}` : w;
+      };
+      $("ticker").value = j.ticker ?? "";
+      $("name").value   = j.full_name ?? "";
+      $("dec").value    = String(dp);
+      $("meta").value   = j.meta_info ?? "";
+      $("max").value    = toDisplay(j.total_max_supply);
+      $("cur").value    = toDisplay(j.current_supply);
+      log(`loaded ${f.name}: atomic ${j.current_supply} @${dp}dp -> ${$("cur").value} display`);
+    } catch(e) { log("could not parse descriptor file: "+e.message,"bad"); }
+  };
+  rd.readAsText(f);
+};
+
+// ---- build / broadcast -----------------------------------------------------
+function buildAndSend(broadcast) {
+  if (!M) return log("wasm not ready","warn");
+  const A=$("addr").value.trim(), V=$("vk").value.trim(), S=$("sk").value.trim(), P=$("pk").value.trim();
+  if (!A||!V||!S||!P) return log("all four wallet fields are required","warn");
+
+  lastTx = null; $("btnWatch").disabled = true;
+  rows($("result"), [["status","building…"]]);
+
+  M.fromCpp__SendFundsFormSubmission__status_update = p =>
+    log("  step "+({1:"initiating",2:"balance",3:"fee",4:"decoys",5:"constructing",6:"submitting"}[p.code]||p.code));
+  M.fromCpp__SendFundsFormSubmission__willBeginSending = ()=>{};
+  M.fromCpp__SendFundsFormSubmission__canceled = ()=>log("canceled","warn");
+  M.fromCpp__SendFundsFormSubmission__authenticate = ()=>M.send_cb__authentication(JSON.stringify({did_pass:true}));
+  M.fromCpp__SendFundsFormSubmission__error = p => {
+    log("ERROR "+JSON.stringify(p),"bad");
+    rows($("result"), [["status","failed","bad"],["detail",JSON.stringify(p)]]);
+  };
+  M.fromCpp__SendFundsFormSubmission__get_unspent_outs = async rq => {
+    const r = await post("get_unspent_outs", {address:A, view_key:V, amount:rq.amount,
+      dust_threshold:rq.dust_threshold, use_dust:rq.use_dust==="true"||rq.use_dust===true,
+      mixin:parseInt(rq.mixin,10)});
+    const res = r.json || {};
+    // The LWS returns outputs it has not yet seen spent, with their key images.
+    // A real wallet filters here; without it the selector can rebuild a spend
+    // the daemon accepts and then silently drops.
+    const before = (res.outputs||[]).length;
+    res.outputs = (res.outputs||[]).filter(o => {
+      const imgs = o.spend_key_images || [];
+      if (!imgs.length) return true;
+      const ki = JSON.parse(M.generate_key_image(o.tx_pub_key, V, P, String(o.index)));
+      return !imgs.includes(ki.retVal);
+    });
+    log(`  lws: fork=${res.fork_version} tip=${res.blockchain_height} outs=${res.outputs.length} (dropped ${before-res.outputs.length} spent)`);
+    M.send_cb_I__got_unspent_outs(JSON.stringify({res}));
+  };
+  M.fromCpp__SendFundsFormSubmission__get_random_outs = async rq => {
+    const r = await post("get_random_outs", {amounts:rq.amounts, count:parseInt(rq.count,10)});
+    M.send_cb_II__got_random_outs(JSON.stringify({res:r.json||{}}));
+  };
+  M.fromCpp__SendFundsFormSubmission__submit_raw_tx = async rq => {
+    log(`  built ${(rq.tx||"").length/2} bytes`);
+    if (!broadcast) { log("  not broadcast (preview)"); M.send_cb_III__submitted_tx(JSON.stringify({})); return; }
+    // submit_raw_tx takes exactly {tx, fee}; omitting fee yields a confusing 500.
+    const r = await post("submit_raw_tx", {tx:rq.tx, fee:"1"});
+    log(`  daemon HTTP ${r.code} ${r.text.slice(0,200)}`, r.code===200?"ok":"bad");
+    if (r.code !== 200) { rows($("result"),[["status","rejected on broadcast","bad"],["http",r.code],["body",r.text.slice(0,300)]]); return; }
+    M.send_cb_III__submitted_tx(JSON.stringify({res:r.json||{}}));
+  };
+  M.fromCpp__SendFundsFormSubmission__success = p => {
+    lastTx = p.tx_hash;
+    const tip = Number(p.blockchain_height||0);
+    rows($("result"), [
+      ["status", broadcast ? "accepted by daemon" : "built (not broadcast)", broadcast?"warn":"ok"],
+      ["tx hash", p.tx_hash],
+      ["token id", p.token_id || "—"],
+      ["fee", bdx(p.used_fee)+" BDX"],
+      ["collateral", bdx(p.final_total_wo_fee)+" BDX"],
+    ]);
+    log("built tx "+p.tx_hash+(broadcast?" (accepted — now waiting on a block)":""), "ok");
+    if (broadcast) { $("btnWatch").disabled = false; watchForConfirmation(); }
+  };
+
+  const d = {
+    ticker:$("ticker").value.trim(), full_name:$("name").value.trim(),
+    decimal_point:$("dec").value.trim(), total_max_supply:$("max").value.trim(),
+    current_supply:$("cur").value.trim(), meta_info:$("meta").value.trim(),
+  };
+  log(`building registration: ${d.ticker} supply ${d.current_supply}/${d.total_max_supply} @${d.decimal_point}dp`);
+  M.send_funds(JSON.stringify({
+    isRegisterStr:false, is_deploy_token:true, token_descriptor:d,
+    fromWallet_didFailToInitialize:false, fromWallet_didFailToBoot:false, fromWallet_needsImport:false,
+    requireAuthentication:false, is_sweeping:false, priority:"1", hasPickedAContact:false,
+    nettype_string:"TESTNET", from_address_string:A, sec_viewKey_string:V,
+    sec_spendKey_string:S, pub_spendKey_string:P, destinations:[],
+    resolvedAddress_fieldIsVisible:false, manuallyEnteredPaymentID_fieldIsVisible:false,
+    resolvedPaymentID_fieldIsVisible:false,
+  }));
+}
+$("btnPreview").onclick = () => buildAndSend(false);
+$("btnSend").onclick    = () => buildAndSend(true);
+
+// ---- confirmation watch ----------------------------------------------------
+async function watchForConfirmation() {
+  clearInterval(watchTimer);
+  const address=$("addr").value.trim(), view_key=$("vk").value.trim();
+  const started = Date.now();
+  log("watching for inclusion in a block…");
+  watchTimer = setInterval(async () => {
+    const r = await post("get_address_info", {address, view_key});
+    if (r.code !== 200 || !r.json) return;
+    const d = r.json;
+    const moved = baseline && (d.total_sent !== baseline.total_sent || d.locked_funds !== baseline.locked);
+    const mins = ((Date.now()-started)/60000).toFixed(1);
+    log(`  height ${d.scanned_height} locked ${bdx(d.locked_funds)} sent ${bdx(d.total_sent)} (${mins}m)`);
+    if (moved) {
+      clearInterval(watchTimer);
+      rows($("result"), [
+        ["status","MINED","ok"],
+        ["tx hash", lastTx||"—"],
+        ["locked funds", bdx(d.locked_funds)+" BDX"],
+        ["height", Number(d.scanned_height).toLocaleString()],
+      ]);
+      log("MINED — the registration is on chain","ok");
+    }
+  }, 20000);
+}
+$("btnWatch").onclick = () => watchForConfirmation();
+</script>
+</body>
+</html>
