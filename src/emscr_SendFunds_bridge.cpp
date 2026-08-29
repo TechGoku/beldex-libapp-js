@@ -598,6 +598,14 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 		req_params_root.put("dust_threshold", req_params.dust_threshold);
 		req_params_root.put("use_dust", req_params.use_dust);
 		req_params_root.put("mixin", req_params.mixin);
+		// HF22: asks the server for this token's outputs alongside the native
+		// ones. Omitted for a BDX send, which must never be handed a token
+		// output as coin. This serializer is a second copy of the one in
+		// beldex_send_routine.hpp -- both have to carry the field or the id is
+		// silently dropped on the way to JS.
+		if (!req_params.token_id.empty()) {
+			req_params_root.put("token_id", req_params.token_id);
+		}
 		stringstream req_params_ss;
 		boost::property_tree::write_json(req_params_ss, req_params_root, false /*pretty*/);
 		EM_ASM_(
@@ -619,6 +627,25 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 		}
 		req_params_root.add_child("amounts", amounts_ptree);
 		req_params_root.put("count", req_params.count);
+		// HF22: parallel to `amounts` -- which bucket each ring is drawn from.
+		// A token transfer needs both, since it spends token outputs for the
+		// amount and native outputs for the BDX fee. Sent only when at least one
+		// ring is for a token, so an ordinary send is byte-for-byte unchanged.
+		{
+			bool any_token = false;
+			BOOST_FOREACH (const string &tid, req_params.token_ids) {
+				if (!tid.empty()) { any_token = true; break; }
+			}
+			if (any_token) {
+				boost::property_tree::ptree token_ids_ptree;
+				BOOST_FOREACH (const string &tid, req_params.token_ids) {
+					property_tree::ptree tid_child;
+					tid_child.put("", tid);
+					token_ids_ptree.push_back(std::make_pair("", tid_child));
+				}
+				req_params_root.add_child("token_ids", token_ids_ptree);
+			}
+		}
 		stringstream req_params_ss;
 		boost::property_tree::write_json(req_params_ss, req_params_root, false /*pretty*/);
 		EM_ASM_(
