@@ -424,7 +424,7 @@ bool emscr_SendFunds_bridge::deploy_new_token(const boost::property_tree::ptree 
 	// A deploy mints its initial supply to its creator: there is no counterparty
 	// to send to, and the wallet must own the outputs to be able to spend the
 	// new token afterwards. create_transaction pads this out to the minimum
-	// zarcanum fan-out the chain requires.
+	// zyphora fan-out the chain requires.
 	dest_addrs.emplace_back(json_root.get<string>("from_address_string"));
 	dest_amounts.emplace_back(current_supply_string);
 	//
@@ -549,7 +549,7 @@ void emscr_SendFunds_bridge::send_funds(const string &args_string)
 			send_app_handler__success(retVals);
 		},
 		//
-		// HF21 private tokens. Both are absent for an ordinary BDX send, which
+		// HF21 privacy tokens. Both are absent for an ordinary BDX send, which
 		// is what every existing caller sends -- Parameters declares them last
 		// precisely so this list can omit them and have them value-initialise to
 		// none. Setting token_id switches the send to that token: the amounts in

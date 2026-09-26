@@ -202,7 +202,7 @@ EMSCRIPTEN_BINDINGS(my_module)
     //
     emscripten::function("new_integrated_address", &new_integrated_address);
     emscripten::function("new_payment_id", &new_payment_id);
-    // HF22: protocol costs and descriptor limits for a private-token
+    // HF22: protocol costs and descriptor limits for a privacy-token
     // registration, so a wallet UI can show them and pre-check the balance
     // rather than learning them from a failed send.
     emscripten::function("token_registration_info", &token_registration_info);
