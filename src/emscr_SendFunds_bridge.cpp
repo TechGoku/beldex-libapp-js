@@ -355,6 +355,9 @@ bool emscr_SendFunds_bridge::deploy_new_token(const boost::property_tree::ptree 
 	}
 	//
 	token_operation_data data{};
+	// The registration fee differs between networks; the operation carries the
+	// network so the transfer layer charges the one consensus checks.
+	data.nettype = nettype_from_string(json_root.get<string>("nettype_string"));
 	auto &tdo = data.tdo;
 	tdo.operation_type = cryptonote::token_descriptor_operation_type::register_token;
 	// The descriptor is what the token id is derived from; the salt is what keeps

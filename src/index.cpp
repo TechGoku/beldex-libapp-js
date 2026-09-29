@@ -71,10 +71,10 @@ string new_payment_id()
         return serial_bridge_utils::error_ret_json_from_message(e.what());
     }
 }
-string token_registration_info()
+string token_registration_info(const string &nettype)
 {
     try {
-        return serial_bridge::token_registration_info();
+        return serial_bridge::token_registration_info(nettype);
     } catch (std::exception &e) {
         return serial_bridge_utils::error_ret_json_from_message(e.what());
     }
